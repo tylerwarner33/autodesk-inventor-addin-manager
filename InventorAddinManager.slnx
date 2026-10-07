@@ -8,4 +8,5 @@
     <File Path="README.md" />
   </Folder>
   <Project Path="Source/InventorAddinManager/InventorAddinManager.csproj" />
+  <Project Path="Source/InventorAddinManager.Loader/InventorAddinManager.Loader.csproj" />
 </Solution>

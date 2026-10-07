@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 	Inventor finds add-ins by reading the .addin manifests in its Addins folders.
-	The ClassId must match the Guid attribute on AddInServer.
+	The ClassId must match the Guid attribute on AddInServer, and on AddInServerProxy in the loader.
 	The deployment target replaces ASSEMBLY_PATH and SOFTWARE_VERSION. Each token must appear exactly once.
 	Element reference: https://help.autodesk.com/view/INVNTOR/2027/ENU/?guid=GUID-52422162-1784-4E8F-B495-CDB7BE9987AB
 -->
@@ -22,8 +22,7 @@
 
 	<!--
 		0 is the isolated mode: the element names whether to use Inventor's load context.
-		Inventor 2026 and earlier ignore it.
-		The manager has no package references, so it is safe in the default context too.
+		Inventor 2026 and earlier ignore it. There, ASSEMBLY_PATH is InventorAddinManager.Loader, which isolates the manager.
 	-->
 	<UseInventorAssemblyContext>0</UseInventorAssemblyContext>
 </Addin>

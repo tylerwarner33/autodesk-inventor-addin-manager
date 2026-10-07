@@ -30,11 +30,17 @@ Each run:
   A different version that Inventor or another add-in loaded does not replace yours.
 - **`Assembly.Location` works.** It gives the path in the shadow copy, so files beside your assembly are found.
 
-The manager itself uses only the BCL, the interop, and the `stdole` package (for the ribbon icons).
-Inventor 2025 and 2026 ignore `UseInventorAssemblyContext` and load it into the default load context,
-where another package could conflict with the version that another add-in loads.
-The identity of `stdole` has been 7.0.3300.0 for every version, so it cannot conflict.
-Inventor 2027 honors the element and loads the manager into its own load context.
+The manager itself runs in its own load context on every release, so its packages do not conflict with Inventor's:
+
+| Release | How the manager is isolated |
+|---|---|
+| 2027 | Inventor honors `UseInventorAssemblyContext` `0` in the manifest. |
+| 2025, 2026 | Inventor ignores that element. The manifest names `InventorAddinManager.Loader`, the only assembly in the default context. It loads the manager from the `App\` subfolder into a load context named `InventorAddinManager`. |
+
+The manager uses the `stdole` package for the ribbon icons.
+In version 17 of that package, `stdole.dll` forwards its types to `Microsoft.VisualStudio.Interop.dll`, which is also in the output.
+A test in Inventor 2025 showed that `stdole.IPictureDisp` loads from the manager's `App\` folder,
+while Inventor's own `stdole.dll` stays in the default context.
 
 ## Requirements
 
@@ -58,6 +64,15 @@ dotnet build Source\InventorAddinManager -p:AutodeskVersion=2027 -p:DeployAddIn=
 
 This writes `%APPDATA%\Autodesk\Inventor 2027\Addins\InventorAddinManager.addin`.
 The manifest points at the build output in this repository.
+For 2025 and 2026, the build also builds the loader, and the manifest points at the loader:
+
+```
+Source\InventorAddinManager\bin\Debug\2025\
+  ├── InventorAddinManager.Loader.dll   the manifest's assembly, in the default context
+  └── App\                              the manager's full build output, in its own context
+```
+
+The `Activate` line in the manager's log names the load context and the file that `stdole` loaded from.
 Inventor locks that output while it runs, so close Inventor before you build the manager again.
 
 The add-in is not signed.

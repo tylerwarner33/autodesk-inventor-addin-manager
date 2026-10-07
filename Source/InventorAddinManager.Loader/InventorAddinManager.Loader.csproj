@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!--
+		Inventor 2025 and 2026 only. They ignore UseInventorAssemblyContext and load the manifest's assembly into the default context.
+		This loader is the only assembly there. It loads the manager from App\ into its own load context,
+		so the manager and its packages (ex. stdole) exist once in the process and resolve from the manager's output.
+		Inventor 2027 isolates the manager itself through the manifest and does not use this.
+		Delete this project when 2025 and 2026 support ends.
+	-->
+	<PropertyGroup>
+		<TargetFramework>$(AddInTargetFramework)</TargetFramework>
+
+		<!-- One level above the manager's App\ output, so the default context cannot find the manager by name. -->
+		<OutputPath>$(MSBuildThisFileDirectory)..\InventorAddinManager\bin\$(Configuration)\$(AutodeskVersion)\</OutputPath>
+
+		<RootNamespace>InventorAddinManager.Loader</RootNamespace>
+		<AssemblyName>InventorAddinManager.Loader</AssemblyName>
+
+		<EnableComHosting>false</EnableComHosting>
+		<ComVisible>false</ComVisible>
+	</PropertyGroup>
+
+	<!-- BCL and interop only. Anything more would load into the default context and could conflict. -->
+	<ItemGroup>
+		<Reference Include="Autodesk.Inventor.Interop">
+			<HintPath>$(InventorInteropPath)</HintPath>
+			<EmbedInteropTypes>false</EmbedInteropTypes>
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+</Project>

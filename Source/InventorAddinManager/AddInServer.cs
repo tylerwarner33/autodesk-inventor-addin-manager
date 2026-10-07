@@ -54,7 +54,7 @@ public sealed class AddInServer : ApplicationAddInServer
 		ManagerLog.DeleteOldFiles();
 		ManagerLog.Write(string.Create(
 			CultureInfo.InvariantCulture,
-			$"Activate: Inventor {_inventorApplication.SoftwareVersion.DisplayVersion}, first time {FirstTime}, load context '{AssemblyLoadContext.GetLoadContext(typeof(AddInServer).Assembly)?.Name}'"));
+			$"Activate: Inventor {_inventorApplication.SoftwareVersion.DisplayVersion}, first time {FirstTime}, load context '{AssemblyLoadContext.GetLoadContext(typeof(AddInServer).Assembly)?.Name}', stdole '{typeof(stdole.IPictureDisp).Assembly.Location}'"));
 
 		ControlDefinitions controlDefinitions = _inventorApplication.CommandManager.ControlDefinitions;
 		_managerButton = new RibbonButton(

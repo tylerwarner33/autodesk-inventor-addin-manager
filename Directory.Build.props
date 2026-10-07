@@ -27,18 +27,22 @@
 	<!--
 		AddInTargetFramework is the runtime that Inventor hosts, not a preference.
 		InventorSoftwareVersion is the value the .addin manifest filters on, not the release year.
+		UseManagerLoader is true on the releases that ignore UseInventorAssemblyContext.
+		The manifest then names InventorAddinManager.Loader, which loads the manager from App\ into its own load context.
 	-->
 	<Choose>
 		<When Condition="'$(AutodeskVersion)' == '2025'">
 			<PropertyGroup>
 				<AddInTargetFramework>net8.0-windows</AddInTargetFramework>
 				<InventorSoftwareVersion>29</InventorSoftwareVersion>
+				<UseManagerLoader>true</UseManagerLoader>
 			</PropertyGroup>
 		</When>
 		<When Condition="'$(AutodeskVersion)' == '2026'">
 			<PropertyGroup>
 				<AddInTargetFramework>net8.0-windows</AddInTargetFramework>
 				<InventorSoftwareVersion>30</InventorSoftwareVersion>
+				<UseManagerLoader>true</UseManagerLoader>
 			</PropertyGroup>
 		</When>
 		<When Condition="'$(AutodeskVersion)' == '2027'">

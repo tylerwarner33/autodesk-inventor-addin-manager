@@ -5,8 +5,13 @@
 		<TargetFramework>$(AddInTargetFramework)</TargetFramework>
 		<UseWPF>true</UseWPF>
 
-		<!-- Each release builds into its own folder, so a manifest never points at a build for another runtime. -->
-		<OutputPath>$(ProjectDir)bin\$(Configuration)\$(AutodeskVersion)\</OutputPath>
+		<!--
+			Each release builds into its own folder, so a manifest never points at a build for another runtime.
+			With the loader, the manager goes in App\ below it, where the default context cannot find it by name.
+		-->
+		<ReleaseOutputPath>$(ProjectDir)bin\$(Configuration)\$(AutodeskVersion)\</ReleaseOutputPath>
+		<OutputPath Condition="'$(UseManagerLoader)' != 'true'">$(ReleaseOutputPath)</OutputPath>
+		<OutputPath Condition="'$(UseManagerLoader)' == 'true'">$(ReleaseOutputPath)App\</OutputPath>
 
 		<RootNamespace>InventorAddinManager</RootNamespace>
 		<AssemblyName>InventorAddinManager</AssemblyName>
@@ -34,11 +39,8 @@
 	</ItemGroup>
 
 	<!--
-		BCL, interop, and stdole only. Do not add another package reference.
-		Inventor 2025 and 2026 ignore UseInventorAssemblyContext and load this assembly into the default context,
-		where a package could conflict with the version that Inventor or another add-in loads.
-		stdole is a primary interop assembly whose identity has not changed since 7.0.3300.0, so it cannot conflict.
-		The package keeps its version independent of the Inventor installation.
+		The manager always runs in its own load context: through UseInventorAssemblyContext on 2027,
+		and through InventorAddinManager.Loader on 2025 and 2026. So stdole resolves from this output, not from Inventor.
 
 		Private=false keeps one managed identity for the COM types.
 		CommandLoadContext gives each command build this same interop assembly.
@@ -67,6 +69,11 @@
 		<None Include="InventorAddinManager.addin.template" />
 	</ItemGroup>
 
+	<!-- Builds the loader into the release folder. The manager does not reference its assembly. -->
+	<ItemGroup Condition="'$(UseManagerLoader)' == 'true'">
+		<ProjectReference Include="..\InventorAddinManager.Loader\InventorAddinManager.Loader.csproj" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
 	<PropertyGroup>
 		<!-- Per user, version dependent. -->
 		<InventorAddinsDir>$(AppData)\Autodesk\Inventor $(AutodeskVersion)\Addins</InventorAddinsDir>
@@ -77,11 +84,13 @@
 		Development deployment. Opt in with -p:DeployAddIn=true.
 		The manifest is written outside the repository, so an ordinary build must never do it.
 		It points at the build output, so a later build needs no new deployment.
+		On 2025 and 2026 it points at the loader, not the manager.
 		Inventor locks that output while it runs, so close Inventor before you build the manager again.
 	-->
 	<Target Name="DeployAddInManifest" AfterTargets="Build" Condition="'$(DeployAddIn)' == 'true'">
 		<PropertyGroup>
-			<AddInAssemblyPath>$([System.IO.Path]::GetFullPath('$(OutputPath)$(AssemblyName).dll'))</AddInAssemblyPath>
+			<AddInAssemblyPath Condition="'$(UseManagerLoader)' != 'true'">$([System.IO.Path]::GetFullPath('$(ReleaseOutputPath)$(AssemblyName).dll'))</AddInAssemblyPath>
+			<AddInAssemblyPath Condition="'$(UseManagerLoader)' == 'true'">$([System.IO.Path]::GetFullPath('$(ReleaseOutputPath)$(AssemblyName).Loader.dll'))</AddInAssemblyPath>
 			<AddInManifestText>$([System.IO.File]::ReadAllText('$(ProjectDir)InventorAddinManager.addin.template').Replace('ASSEMBLY_PATH', '$(AddInAssemblyPath)').Replace('SOFTWARE_VERSION', '$(InventorSoftwareVersion)'))</AddInManifestText>
 		</PropertyGroup>
 		<MakeDir Directories="$(InventorAddinsDir)" />
