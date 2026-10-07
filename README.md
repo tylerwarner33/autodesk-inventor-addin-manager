@@ -1,0 +1,1 @@
+# autodesk-inventor-addin-manager
