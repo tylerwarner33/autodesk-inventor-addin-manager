@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Inventor finds add-ins by reading the .addin manifests in its Addins folders.
+	The ClassId must match the Guid attribute on AddInServer, and on AddInServerProxy in the loader.
+	The deployment target replaces ASSEMBLY_PATH and SOFTWARE_VERSION. Each token must appear exactly once.
+	Element reference: https://help.autodesk.com/view/INVNTOR/2027/ENU/?guid=GUID-52422162-1784-4E8F-B495-CDB7BE9987AB
+-->
+<Addin Type="Standard">
+	<ClassId>{4421BA74-4DBD-4925-9521-35C05DD70634}</ClassId>
+	<ClientId>{4421BA74-4DBD-4925-9521-35C05DD70634}</ClientId>
+	<DisplayName>Add-In Manager</DisplayName>
+	<Description>Runs commands from a build output in a live Inventor session, with no restart after each build.</Description>
+	<Assembly>ASSEMBLY_PATH</Assembly>
+	<LoadOnStartUp>1</LoadOnStartUp>
+	<UserUnloadable>1</UserUnloadable>
+	<Hidden>0</Hidden>
+
+	<!-- 2025 reports 29, 2026 reports 30, 2027 reports 31. -->
+	<SupportedSoftwareVersionEqualTo>SOFTWARE_VERSION..</SupportedSoftwareVersionEqualTo>
+	<DataVersion>1</DataVersion>
+	<OSType>Win64</OSType>
+
+	<!--
+		0 is the isolated mode: the element names whether to use Inventor's load context.
+		Inventor 2026 and earlier ignore it. There, ASSEMBLY_PATH is InventorAddinManager.Loader, which isolates the manager.
+	-->
+	<UseInventorAssemblyContext>0</UseInventorAssemblyContext>
+</Addin>

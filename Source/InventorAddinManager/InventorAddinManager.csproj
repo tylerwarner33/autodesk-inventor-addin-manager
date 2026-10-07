@@ -1,0 +1,109 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- Selected by AutodeskVersion. The -windows suffix is needed for WPF and the COM interop surface. -->
+		<TargetFramework>$(AddInTargetFramework)</TargetFramework>
+		<UseWPF>true</UseWPF>
+
+		<!--
+			Each release builds into its own folder, so a manifest never points at a build for another runtime.
+			With the loader, the manager goes in App\ below it, where the default context cannot find it by name.
+		-->
+		<ReleaseOutputPath>$(ProjectDir)bin\$(Configuration)\$(AutodeskVersion)\</ReleaseOutputPath>
+		<OutputPath Condition="'$(UseManagerLoader)' != 'true'">$(ReleaseOutputPath)</OutputPath>
+		<OutputPath Condition="'$(UseManagerLoader)' == 'true'">$(ReleaseOutputPath)App\</OutputPath>
+
+		<RootNamespace>InventorAddinManager</RootNamespace>
+		<AssemblyName>InventorAddinManager</AssemblyName>
+		<AssemblyTitle>Inventor Add-In Manager</AssemblyTitle>
+		<Description>Runs commands from a build output in a live Inventor session, with no restart after each build.</Description>
+		<Product>Inventor Add-In Manager</Product>
+
+		<!-- Inventor finds the add-in through the .addin manifest, so only the server class must be COM visible. -->
+		<EnableComHosting>false</EnableComHosting>
+		<ComVisible>false</ComVisible>
+
+		<!-- A Library cannot be started, so F5 starts Inventor with the debugger attached. -->
+		<OutputType>Library</OutputType>
+		<StartAction>Program</StartAction>
+		<StartProgram>$(InventorInstallDir)\Bin\Inventor.exe</StartProgram>
+	</PropertyGroup>
+
+	<!-- WinForms only for AxHost, which converts the icons. Its global usings would clash with the WPF names. -->
+	<PropertyGroup>
+		<UseWindowsForms>true</UseWindowsForms>
+	</PropertyGroup>
+	<ItemGroup>
+		<Using Remove="System.Windows.Forms" />
+		<Using Remove="System.Drawing" />
+	</ItemGroup>
+
+	<!--
+		The manager always runs in its own load context: through UseInventorAssemblyContext on 2027,
+		and through InventorAddinManager.Loader on 2025 and 2026. So stdole resolves from this output, not from Inventor.
+
+		Private=false keeps one managed identity for the COM types.
+		CommandLoadContext gives each command build this same interop assembly.
+	-->
+	<ItemGroup>
+		<PackageReference Include="stdole" Version="17.14.40260" />
+	</ItemGroup>
+	<PropertyGroup>
+		<!-- A class library does not copy package assemblies to its output without this, and Inventor loads from there. -->
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
+	<ItemGroup>
+		<Reference Include="Autodesk.Inventor.Interop">
+			<HintPath>$(InventorInteropPath)</HintPath>
+			<EmbedInteropTypes>false</EmbedInteropTypes>
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+	<!-- Ribbon icons: 16 px for the small button, 32 px for the large button. -->
+	<ItemGroup>
+		<EmbeddedResource Include="Resources\*.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="InventorAddinManager.addin.template" />
+	</ItemGroup>
+
+	<!-- Builds the loader into the release folder. The manager does not reference its assembly. -->
+	<ItemGroup Condition="'$(UseManagerLoader)' == 'true'">
+		<ProjectReference Include="..\InventorAddinManager.Loader\InventorAddinManager.Loader.csproj" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<!-- Per user, version dependent. -->
+		<InventorAddinsDir>$(AppData)\Autodesk\Inventor $(AutodeskVersion)\Addins</InventorAddinsDir>
+		<InventorAddinManifestPath>$(InventorAddinsDir)\$(AssemblyName).addin</InventorAddinManifestPath>
+	</PropertyGroup>
+
+	<!--
+		Development deployment. Opt in with -p:DeployAddIn=true.
+		The manifest is written outside the repository, so an ordinary build must never do it.
+		It points at the build output, so a later build needs no new deployment.
+		On 2025 and 2026 it points at the loader, not the manager.
+		Inventor locks that output while it runs, so close Inventor before you build the manager again.
+	-->
+	<Target Name="DeployAddInManifest" AfterTargets="Build" Condition="'$(DeployAddIn)' == 'true'">
+		<PropertyGroup>
+			<AddInAssemblyPath Condition="'$(UseManagerLoader)' != 'true'">$([System.IO.Path]::GetFullPath('$(ReleaseOutputPath)$(AssemblyName).dll'))</AddInAssemblyPath>
+			<AddInAssemblyPath Condition="'$(UseManagerLoader)' == 'true'">$([System.IO.Path]::GetFullPath('$(ReleaseOutputPath)$(AssemblyName).Loader.dll'))</AddInAssemblyPath>
+			<AddInManifestText>$([System.IO.File]::ReadAllText('$(ProjectDir)InventorAddinManager.addin.template').Replace('ASSEMBLY_PATH', '$(AddInAssemblyPath)').Replace('SOFTWARE_VERSION', '$(InventorSoftwareVersion)'))</AddInManifestText>
+		</PropertyGroup>
+		<MakeDir Directories="$(InventorAddinsDir)" />
+		<WriteLinesToFile
+			File="$(InventorAddinManifestPath)"
+			Lines="$(AddInManifestText)"
+			Overwrite="true"
+			WriteOnlyWhenDifferent="true" />
+		<Message Importance="high" Text="Deployed the Inventor $(AutodeskVersion) manifest to $(InventorAddinManifestPath), pointing at $(AddInAssemblyPath)" />
+	</Target>
+
+	<Target Name="CleanAddInManifest" AfterTargets="Clean" Condition="'$(DeployAddIn)' == 'true'">
+		<Delete Files="$(InventorAddinManifestPath)" />
+	</Target>
+
+</Project>
