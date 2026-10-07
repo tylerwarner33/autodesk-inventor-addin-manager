@@ -1,0 +1,100 @@
+<Window
+	x:Class="InventorAddinManager.Views.ManagerWindow"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	Title="Add-In Manager"
+	Width="820"
+	Height="480"
+	MinWidth="560"
+	MinHeight="320"
+	ShowInTaskbar="False"
+	WindowStartupLocation="CenterOwner">
+	<Grid Margin="12">
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="12" />
+			<ColumnDefinition Width="*" />
+		</Grid.ColumnDefinitions>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+
+		<TextBlock Margin="0,0,0,6" FontWeight="SemiBold" Text="Build outputs" />
+		<TextBlock Grid.Column="2" Margin="0,0,0,6" FontWeight="SemiBold" Text="Commands" />
+
+		<ListBox
+			x:Name="_assemblyList"
+			Grid.Row="1"
+			HorizontalContentAlignment="Stretch"
+			ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+			SelectionChanged="AssemblyList_SelectionChanged">
+			<ListBox.ItemTemplate>
+				<DataTemplate>
+					<StackPanel Margin="0,2" ToolTip="{Binding AssemblyPath}">
+						<TextBlock FontWeight="SemiBold" Text="{Binding FileName}" />
+						<TextBlock Opacity="0.7" Text="{Binding FolderPath}" TextTrimming="CharacterEllipsis" />
+					</StackPanel>
+				</DataTemplate>
+			</ListBox.ItemTemplate>
+		</ListBox>
+
+		<ListBox
+			x:Name="_commandList"
+			Grid.Row="1"
+			Grid.Column="2"
+			DisplayMemberPath="TypeName"
+			MouseDoubleClick="CommandList_MouseDoubleClick"
+			SelectionChanged="CommandList_SelectionChanged" />
+
+		<StackPanel Grid.Row="2" Margin="0,8,0,0" Orientation="Horizontal">
+			<Button MinWidth="80" Click="AddButton_Click" Content="Add..." />
+			<Button
+				x:Name="_removeButton"
+				MinWidth="80"
+				Margin="8,0,0,0"
+				Click="RemoveButton_Click"
+				Content="Remove"
+				IsEnabled="False" />
+			<Button
+				x:Name="_refreshButton"
+				MinWidth="80"
+				Margin="8,0,0,0"
+				Click="RefreshButton_Click"
+				Content="Refresh"
+				IsEnabled="False" />
+		</StackPanel>
+
+		<TextBlock
+			x:Name="_statusText"
+			Grid.Row="2"
+			Grid.Column="2"
+			Margin="0,8,0,0"
+			VerticalAlignment="Center"
+			TextWrapping="Wrap" />
+
+		<DockPanel Grid.Row="3" Grid.ColumnSpan="3" Margin="0,12,0,0" LastChildFill="False">
+			<CheckBox
+				x:Name="_wrapInTransactionCheckBox"
+				VerticalAlignment="Center"
+				Content="Run as one undo step"
+				ToolTip="Put all changes to the active document in one transaction. Turn this off for a command that saves or closes documents." />
+			<Button
+				MinWidth="80"
+				DockPanel.Dock="Right"
+				Content="Close"
+				IsCancel="True" />
+			<Button
+				x:Name="_runButton"
+				MinWidth="80"
+				Margin="0,0,8,0"
+				Click="RunButton_Click"
+				Content="Run"
+				DockPanel.Dock="Right"
+				IsDefault="True"
+				IsEnabled="False" />
+		</DockPanel>
+	</Grid>
+</Window>

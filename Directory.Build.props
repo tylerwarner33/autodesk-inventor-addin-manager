@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+	<PropertyGroup>
+		<Version>0.1.0</Version>
+
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+		<!-- Symbols live in the assembly, so a shadow copy carries them and breakpoints still bind. -->
+		<DebugType>embedded</DebugType>
+
+		<!-- The release folder below already separates the builds. -->
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	</PropertyGroup>
+
+	<!--
+		The Inventor release being built. Override with -p:AutodeskVersion=2025.
+		Inventor 2024 and earlier run on .NET Framework, which has no collectible AssemblyLoadContext.
+	-->
+	<PropertyGroup>
+		<AutodeskVersion Condition="'$(AutodeskVersion)' == ''">2027</AutodeskVersion>
+		<SupportedAutodeskVersions>2025;2026;2027</SupportedAutodeskVersions>
+	</PropertyGroup>
+
+	<!--
+		AddInTargetFramework is the runtime that Inventor hosts, not a preference.
+		InventorSoftwareVersion is the value the .addin manifest filters on, not the release year.
+	-->
+	<Choose>
+		<When Condition="'$(AutodeskVersion)' == '2025'">
+			<PropertyGroup>
+				<AddInTargetFramework>net8.0-windows</AddInTargetFramework>
+				<InventorSoftwareVersion>29</InventorSoftwareVersion>
+			</PropertyGroup>
+		</When>
+		<When Condition="'$(AutodeskVersion)' == '2026'">
+			<PropertyGroup>
+				<AddInTargetFramework>net8.0-windows</AddInTargetFramework>
+				<InventorSoftwareVersion>30</InventorSoftwareVersion>
+			</PropertyGroup>
+		</When>
+		<When Condition="'$(AutodeskVersion)' == '2027'">
+			<PropertyGroup>
+				<AddInTargetFramework>net10.0-windows</AddInTargetFramework>
+				<InventorSoftwareVersion>31</InventorSoftwareVersion>
+			</PropertyGroup>
+		</When>
+		<Otherwise>
+			<PropertyGroup>
+				<!-- Still a valid framework, so the failure is the error below and not a confusing SDK message. -->
+				<AddInTargetFramework>net10.0-windows</AddInTargetFramework>
+				<UnsupportedAutodeskVersion>true</UnsupportedAutodeskVersion>
+			</PropertyGroup>
+		</Otherwise>
+	</Choose>
+
+	<PropertyGroup>
+		<InventorInstallDir>$(ProgramFiles)\Autodesk\Inventor $(AutodeskVersion)</InventorInstallDir>
+		<InventorInteropPath>$(InventorInstallDir)\Bin\Public Assemblies\Autodesk.Inventor.Interop.dll</InventorInteropPath>
+	</PropertyGroup>
+
+	<Target Name="ValidateAutodeskVersion" BeforeTargets="PrepareForBuild">
+		<Error
+			Condition="'$(UnsupportedAutodeskVersion)' == 'true'"
+			Text="AutodeskVersion '$(AutodeskVersion)' is not supported. Supported releases: $(SupportedAutodeskVersions)." />
+		<Error
+			Condition="!Exists('$(InventorInteropPath)')"
+			Text="Inventor $(AutodeskVersion) is not installed: '$(InventorInteropPath)' does not exist. Build with -p:AutodeskVersion=&lt;an installed release&gt;." />
+	</Target>
+</Project>
