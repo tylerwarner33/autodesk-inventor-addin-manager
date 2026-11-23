@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!--
+		Smoke tests against a running Inventor of the configuration's release, with the manager deployed.
+		Each test skips when no such Inventor runs, so a CI runner with no Inventor skips them all.
+		They call the manager through ApplicationAddIn.Automation over COM, from this process.
+	-->
+	<PropertyGroup>
+		<TargetFramework>$(AddInTargetFramework)</TargetFramework>
+		<RootNamespace>InventorAddinManager.InventorTests</RootNamespace>
+		<IsPackable>false</IsPackable>
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="xunit.v3" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Xunit" />
+	</ItemGroup>
+
+	<!-- Private=true: this is a separate process, so it needs its own copy of the interop. -->
+	<ItemGroup>
+		<Reference Include="Autodesk.Inventor.Interop">
+			<HintPath>$(InventorInteropPath)</HintPath>
+			<EmbedInteropTypes>false</EmbedInteropTypes>
+			<Private>true</Private>
+		</Reference>
+	</ItemGroup>
+
+	<!-- Built first, not referenced: Inventor loads their build outputs through the manager. -->
+	<ItemGroup>
+		<ProjectReference Include="..\InventorAddinManager.Tests.Commands\InventorAddinManager.Tests.Commands.csproj" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\..\Samples\SampleCommands\SampleCommands.csproj" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+			<_Parameter1>CommandsAssemblyPath</_Parameter1>
+			<_Parameter2>$(RepoRootDir)Tests\InventorAddinManager.Tests.Commands\bin\$(Configuration)\InventorAddinManager.Tests.Commands.dll</_Parameter2>
+		</AssemblyAttribute>
+		<AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+			<_Parameter1>SampleCommandsAssemblyPath</_Parameter1>
+			<_Parameter2>$(RepoRootDir)Samples\SampleCommands\bin\$(Configuration)\SampleCommands.dll</_Parameter2>
+		</AssemblyAttribute>
+		<AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+			<_Parameter1>InventorSoftwareVersion</_Parameter1>
+			<_Parameter2>$(InventorSoftwareVersion)</_Parameter2>
+		</AssemblyAttribute>
+		<AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+			<_Parameter1>AutodeskVersion</_Parameter1>
+			<_Parameter2>$(AutodeskVersion)</_Parameter2>
+		</AssemblyAttribute>
+	</ItemGroup>
+
+</Project>
