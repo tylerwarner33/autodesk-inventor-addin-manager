@@ -12,12 +12,18 @@ namespace InventorAddinManager.Loading;
 /// </remarks>
 internal static class ShadowCopy
 {
-	private static readonly string _shadowRoot = Path.Combine(
+	/// <summary>
+	/// 	The folder that holds the shadow copies of all builds.
+	/// </summary>
+	public static readonly string DefaultRoot = Path.Combine(
 		Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
 		nameof(InventorAddinManager),
 		"Shadow");
 
-	private static readonly TimeSpan _maximumAge = TimeSpan.FromDays(1);
+	/// <summary>
+	/// 	The age after which <see cref="Create" /> deletes a shadow copy.
+	/// </summary>
+	public static readonly TimeSpan MaximumAge = TimeSpan.FromDays(1);
 
 	/// <summary>
 	/// 	Copies the folder that holds the assembly to a new shadow folder.
@@ -25,15 +31,19 @@ internal static class ShadowCopy
 	/// <param name="assemblyPath">
 	/// 	Path of the assembly in the build output.
 	/// </param>
+	/// <param name="shadowRoot">
+	/// 	The folder for the shadow copies, or <see langword="null" /> for <see cref="DefaultRoot" />.
+	/// 	The tests give a temporary folder.
+	/// </param>
 	/// <returns>
 	/// 	Path of the assembly in the shadow copy.
 	/// </returns>
-	public static string Create(string assemblyPath)
+	public static string Create(string assemblyPath, string? shadowRoot = null)
 	{
 		string sourceDirectory = Path.GetDirectoryName(assemblyPath)
 			?? throw new ArgumentException($"'{assemblyPath}' has no folder.", nameof(assemblyPath));
 
-		string assemblyShadowRoot = Path.Combine(_shadowRoot, Path.GetFileNameWithoutExtension(assemblyPath));
+		string assemblyShadowRoot = Path.Combine(shadowRoot ?? DefaultRoot, Path.GetFileNameWithoutExtension(assemblyPath));
 		DeleteOldCopies(assemblyShadowRoot);
 
 		string folderName = $"{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture)}-{Guid.NewGuid().ToString("N")[..6]}";
@@ -71,7 +81,7 @@ internal static class ShadowCopy
 			return;
 		}
 
-		DateTime oldestAllowed = DateTime.UtcNow - _maximumAge;
+		DateTime oldestAllowed = DateTime.UtcNow - MaximumAge;
 		foreach (string directory in Directory.GetDirectories(assemblyShadowRoot))
 		{
 			try

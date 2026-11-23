@@ -6,7 +6,6 @@
 	-->
 	<PropertyGroup>
 		<TargetFramework>$(AddInTargetFramework)</TargetFramework>
-		<OutputPath>$(ProjectDir)bin\$(Configuration)\$(AutodeskVersion)\</OutputPath>
 		<RootNamespace>SampleCommands</RootNamespace>
 		<AssemblyName>SampleCommands</AssemblyName>
 
@@ -19,7 +18,7 @@
 
 	<!-- A newer version than the 13.0.3 that Inventor ships, so PackageVersionReport can show which copy loads. -->
 	<ItemGroup>
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+		<PackageReference Include="Newtonsoft.Json" />
 	</ItemGroup>
 
 	<!-- Private=false: the manager gives the command Inventor's interop, so a copy in the output is not used. -->

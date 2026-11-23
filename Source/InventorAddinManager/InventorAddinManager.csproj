@@ -6,10 +6,11 @@
 		<UseWPF>true</UseWPF>
 
 		<!--
-			Each release builds into its own folder, so a manifest never points at a build for another runtime.
+			Each configuration, and so each release, builds into its own folder, ex. bin\Debug.2027\.
+			A manifest then never points at a build for another runtime.
 			With the loader, the manager goes in App\ below it, where the default context cannot find it by name.
 		-->
-		<ReleaseOutputPath>$(ProjectDir)bin\$(Configuration)\$(AutodeskVersion)\</ReleaseOutputPath>
+		<ReleaseOutputPath>$(ProjectDir)bin\$(Configuration)\</ReleaseOutputPath>
 		<OutputPath Condition="'$(UseManagerLoader)' != 'true'">$(ReleaseOutputPath)</OutputPath>
 		<OutputPath Condition="'$(UseManagerLoader)' == 'true'">$(ReleaseOutputPath)App\</OutputPath>
 
@@ -46,7 +47,7 @@
 		CommandLoadContext gives each command build this same interop assembly.
 	-->
 	<ItemGroup>
-		<PackageReference Include="stdole" Version="17.14.40260" />
+		<PackageReference Include="stdole" />
 	</ItemGroup>
 	<PropertyGroup>
 		<!-- A class library does not copy package assemblies to its output without this, and Inventor loads from there. -->
@@ -58,6 +59,11 @@
 			<EmbedInteropTypes>false</EmbedInteropTypes>
 			<Private>false</Private>
 		</Reference>
+	</ItemGroup>
+
+	<!-- The unit tests call the loading classes directly. -->
+	<ItemGroup>
+		<InternalsVisibleTo Include="InventorAddinManager.Tests" />
 	</ItemGroup>
 
 	<!-- Ribbon icons: 16 px for the small button, 32 px for the large button. -->

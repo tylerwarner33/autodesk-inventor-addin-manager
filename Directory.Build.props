@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
 	<PropertyGroup>
+		<RepoRootDir>$(MSBuildThisFileDirectory)</RepoRootDir>
+
 		<Version>0.1.0</Version>
 
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -11,24 +13,38 @@
 		<!-- Symbols live in the assembly, so a shadow copy carries them and breakpoints still bind. -->
 		<DebugType>embedded</DebugType>
 
-		<!-- The release folder below already separates the builds. -->
+		<!-- Makes a build on GitHub Actions deterministic. A local build keeps real source paths. -->
+		<ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+		<!-- The configuration already separates the builds. -->
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 	</PropertyGroup>
 
 	<!--
-		The Inventor release being built. Override with -p:AutodeskVersion=2025.
-		Inventor 2024 and earlier run on .NET Framework, which has no collectible AssemblyLoadContext.
+		The configuration names the build type and the Inventor release, ex. Debug.2027 or Release.2025.
+		Select one in the IDE, or build with -c Release.2025. With no configuration, the build is Debug.2027.
+		The name holds the year, not the Autodesk release number: Inventor 2027 is R31, so "R27" would mean Inventor 2023.
 	-->
 	<PropertyGroup>
-		<AutodeskVersion Condition="'$(AutodeskVersion)' == ''">2027</AutodeskVersion>
 		<SupportedAutodeskVersions>2025;2026;2027</SupportedAutodeskVersions>
+		<Configurations>Debug.2025;Debug.2026;Debug.2027;Release.2025;Release.2026;Release.2027</Configurations>
+		<Configuration Condition="'$(Configuration)' == ''">Debug.2027</Configuration>
+
+		<IsAutodeskConfiguration>$([System.Text.RegularExpressions.Regex]::IsMatch('$(Configuration)', '^(Debug|Release)\.\d{4}$'))</IsAutodeskConfiguration>
+		<ConfigurationBase Condition="'$(IsAutodeskConfiguration)' == 'true'">$([System.Text.RegularExpressions.Regex]::Replace('$(Configuration)', '^(Debug|Release)\.\d{4}$', '$1'))</ConfigurationBase>
+		<ConfigurationAutodeskVersion Condition="'$(IsAutodeskConfiguration)' == 'true'">$([System.Text.RegularExpressions.Regex]::Replace('$(Configuration)', '^(?:Debug|Release)\.(\d{4})$', '$1'))</ConfigurationAutodeskVersion>
+
+		<!-- Set from the configuration only. ValidateAutodeskVersion stops a build that gives -p:AutodeskVersion too. -->
+		<AutodeskVersion>$(ConfigurationAutodeskVersion)</AutodeskVersion>
 	</PropertyGroup>
 
 	<!--
+		Everything that follows from the release.
 		AddInTargetFramework is the runtime that Inventor hosts, not a preference.
 		InventorSoftwareVersion is the value the .addin manifest filters on, not the release year.
 		UseManagerLoader is true on the releases that ignore UseInventorAssemblyContext.
 		The manifest then names InventorAddinManager.Loader, which loads the manager from App\ into its own load context.
+		InventorDefineConstants lets code use an API of a newer release: #if INVENTOR2026_OR_GREATER.
 	-->
 	<Choose>
 		<When Condition="'$(AutodeskVersion)' == '2025'">
@@ -36,6 +52,7 @@
 				<AddInTargetFramework>net8.0-windows</AddInTargetFramework>
 				<InventorSoftwareVersion>29</InventorSoftwareVersion>
 				<UseManagerLoader>true</UseManagerLoader>
+				<InventorDefineConstants>INVENTOR2025;INVENTOR2025_OR_GREATER</InventorDefineConstants>
 			</PropertyGroup>
 		</When>
 		<When Condition="'$(AutodeskVersion)' == '2026'">
@@ -43,12 +60,14 @@
 				<AddInTargetFramework>net8.0-windows</AddInTargetFramework>
 				<InventorSoftwareVersion>30</InventorSoftwareVersion>
 				<UseManagerLoader>true</UseManagerLoader>
+				<InventorDefineConstants>INVENTOR2026;INVENTOR2025_OR_GREATER;INVENTOR2026_OR_GREATER</InventorDefineConstants>
 			</PropertyGroup>
 		</When>
 		<When Condition="'$(AutodeskVersion)' == '2027'">
 			<PropertyGroup>
 				<AddInTargetFramework>net10.0-windows</AddInTargetFramework>
 				<InventorSoftwareVersion>31</InventorSoftwareVersion>
+				<InventorDefineConstants>INVENTOR2027;INVENTOR2025_OR_GREATER;INVENTOR2026_OR_GREATER;INVENTOR2027_OR_GREATER</InventorDefineConstants>
 			</PropertyGroup>
 		</When>
 		<Otherwise>
@@ -60,17 +79,59 @@
 		</Otherwise>
 	</Choose>
 
+	<!--
+		The SDK sets these only for a configuration named exactly Debug or Release.
+		Without this block, Release.2027 is not optimized and defines RELEASE_2027 instead of RELEASE.
+	-->
+	<PropertyGroup>
+		<DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(ConfigurationBase)' == 'Debug'">
+		<DebugSymbols>true</DebugSymbols>
+		<Optimize>false</Optimize>
+		<DefineConstants>DEBUG;$(InventorDefineConstants)</DefineConstants>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(ConfigurationBase)' == 'Release'">
+		<Optimize>true</Optimize>
+		<DefineConstants>RELEASE;$(InventorDefineConstants)</DefineConstants>
+	</PropertyGroup>
+
+	<!--
+		One obj\ folder for each configuration, ex. obj\Release.2025\, the same format as bin\Release.2025\.
+		The NuGet restore of a net8.0 release and of a net10.0 release then never write the same project.assets.json,
+		and two releases can build at the same time.
+		MSBuild reads BaseIntermediateOutputPath before the SDK, so it must be set here.
+		The SDK excludes only the current configuration's folder from the default **\*.cs items, so the exclude below adds all of obj\.
+		Without it, a 2025 build also compiles the generated files of a 2027 build.
+	-->
+	<PropertyGroup>
+		<BaseIntermediateOutputPath>obj\$(Configuration)\</BaseIntermediateOutputPath>
+		<IntermediateOutputPath>$(BaseIntermediateOutputPath)</IntermediateOutputPath>
+		<DefaultItemExcludes>$(DefaultItemExcludes);obj\**</DefaultItemExcludes>
+	</PropertyGroup>
+
+	<!--
+		The interop is vendored under Libs, so a machine with no Inventor (ex. a CI runner) can build and run the unit tests.
+		Each copy is the oldest point release of its year. A build against a newer point release does not bind
+		to the older interop that an Inventor with no update loads.
+	-->
 	<PropertyGroup>
 		<InventorInstallDir>$(ProgramFiles)\Autodesk\Inventor $(AutodeskVersion)</InventorInstallDir>
-		<InventorInteropPath>$(InventorInstallDir)\Bin\Public Assemblies\Autodesk.Inventor.Interop.dll</InventorInteropPath>
+		<InventorInteropPath>$(RepoRootDir)Libs\Inventor\$(AutodeskVersion)\Autodesk.Inventor.Interop.dll</InventorInteropPath>
 	</PropertyGroup>
 
 	<Target Name="ValidateAutodeskVersion" BeforeTargets="PrepareForBuild">
 		<Error
-			Condition="'$(UnsupportedAutodeskVersion)' == 'true'"
-			Text="AutodeskVersion '$(AutodeskVersion)' is not supported. Supported releases: $(SupportedAutodeskVersions)." />
+			Condition="'$(IsAutodeskConfiguration)' != 'true'"
+			Text="Configuration '$(Configuration)' does not name an Inventor release. Use one of: $(Configurations)." />
 		<Error
-			Condition="!Exists('$(InventorInteropPath)')"
-			Text="Inventor $(AutodeskVersion) is not installed: '$(InventorInteropPath)' does not exist. Build with -p:AutodeskVersion=&lt;an installed release&gt;." />
+			Condition="'$(IsAutodeskConfiguration)' == 'true' and '$(AutodeskVersion)' != '$(ConfigurationAutodeskVersion)'"
+			Text="AutodeskVersion '$(AutodeskVersion)' is not the release of configuration '$(Configuration)'. Select the release with the configuration only, ex. -c Release.$(AutodeskVersion)." />
+		<Error
+			Condition="'$(IsAutodeskConfiguration)' == 'true' and '$(UnsupportedAutodeskVersion)' == 'true'"
+			Text="Inventor $(AutodeskVersion) is not supported. Supported releases: $(SupportedAutodeskVersions)." />
+		<Error
+			Condition="'$(UnsupportedAutodeskVersion)' != 'true' and !Exists('$(InventorInteropPath)')"
+			Text="The interop for Inventor $(AutodeskVersion) is missing: '$(InventorInteropPath)'." />
 	</Target>
 </Project>

@@ -11,7 +11,7 @@
 		<TargetFramework>$(AddInTargetFramework)</TargetFramework>
 
 		<!-- One level above the manager's App\ output, so the default context cannot find the manager by name. -->
-		<OutputPath>$(MSBuildThisFileDirectory)..\InventorAddinManager\bin\$(Configuration)\$(AutodeskVersion)\</OutputPath>
+		<OutputPath>$(MSBuildThisFileDirectory)..\InventorAddinManager\bin\$(Configuration)\</OutputPath>
 
 		<RootNamespace>InventorAddinManager.Loader</RootNamespace>
 		<AssemblyName>InventorAddinManager.Loader</AssemblyName>

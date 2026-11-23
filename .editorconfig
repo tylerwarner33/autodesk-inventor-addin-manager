@@ -12,7 +12,8 @@ indent_style = tab
 tab_width = 3
 
 # New line preferences
-end_of_line = crlf
+# .gitattributes keeps LF in each checkout, so end_of_line here makes the editor agree with git.
+end_of_line = lf
 insert_final_newline = false
 
 #### .NET Code Actions ####

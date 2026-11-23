@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+	<!--
+		A solution build with no configuration would use the first name in sort order, Debug.2025.
+		This gives it the same default as a project build. See Directory.Build.props.
+	-->
+	<PropertyGroup>
+		<Configuration Condition="'$(Configuration)' == ''">Debug.2027</Configuration>
+	</PropertyGroup>
+</Project>

@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!--
+		Unit tests of the loading pipeline. They need no Inventor: the interop is only metadata until a COM call.
+		The runtime of the release, so the tests run on net8.0 for 2025 and 2026, as the manager does there.
+	-->
+	<PropertyGroup>
+		<TargetFramework>$(AddInTargetFramework)</TargetFramework>
+		<RootNamespace>InventorAddinManager.Tests</RootNamespace>
+		<IsPackable>false</IsPackable>
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- xunit.v3 runs on Microsoft.Testing.Platform, which global.json selects for dotnet test. -->
+		<PackageReference Include="xunit.v3" />
+
+		<!--
+			The version that Inventor ships. A test loads it into the default context first,
+			then checks that a command still gets its own 13.0.4.
+		-->
+		<PackageReference Include="Newtonsoft.Json" VersionOverride="13.0.3" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Xunit" />
+	</ItemGroup>
+
+	<!-- Private=true: no Inventor process gives the interop here, so the test output needs its own copy. -->
+	<ItemGroup>
+		<Reference Include="Autodesk.Inventor.Interop">
+			<HintPath>$(InventorInteropPath)</HintPath>
+			<EmbedInteropTypes>false</EmbedInteropTypes>
+			<Private>true</Private>
+		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Source\InventorAddinManager\InventorAddinManager.csproj" />
+
+		<!-- Built first, not referenced: the tests load its build output through the manager. -->
+		<ProjectReference Include="..\InventorAddinManager.Tests.Commands\InventorAddinManager.Tests.Commands.csproj" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<!-- Tells the tests where the command build is. The project above builds it into its bin\$(Configuration)\ folder. -->
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+			<_Parameter1>CommandsAssemblyPath</_Parameter1>
+			<_Parameter2>$(RepoRootDir)Tests\InventorAddinManager.Tests.Commands\bin\$(Configuration)\InventorAddinManager.Tests.Commands.dll</_Parameter2>
+		</AssemblyAttribute>
+	</ItemGroup>
+
+</Project>

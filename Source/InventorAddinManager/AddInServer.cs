@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using System.Windows.Interop;
 using Inventor;
+using InventorAddinManager.Automation;
 using InventorAddinManager.Diagnostics;
 using InventorAddinManager.Loading;
 using InventorAddinManager.Ribbon;
@@ -42,14 +43,19 @@ public sealed class AddInServer : ApplicationAddInServer
 	private RibbonButton? _runLastButton;
 	private UserInterfaceEvents? _userInterfaceEvents;
 	private UserInterfaceEventsSink_OnResetRibbonInterfaceEventHandler? _onResetRibbonInterfaceHandler;
+	private ManagerAutomation? _automation;
 
-	public object? Automation => null;
+	/// <summary>
+	/// 	Gets the object that runs a command with no window, for a script or a test. See <see cref="ManagerAutomation" />.
+	/// </summary>
+	public object? Automation => _automation;
 
 	public void Activate(ApplicationAddInSite AddInSiteObject, bool FirstTime)
 	{
 		_inventorApplication = AddInSiteObject.Application;
 		_settings = ManagerSettings.Load(_inventorApplication.SoftwareVersion.Major);
 		_commandRunner = new CommandRunner(_inventorApplication);
+		_automation = new ManagerAutomation(RunAndLog);
 
 		ManagerLog.DeleteOldFiles();
 		ManagerLog.Write(string.Create(
@@ -97,6 +103,7 @@ public sealed class AddInServer : ApplicationAddInServer
 
 		_userInterfaceEvents = null;
 		_onResetRibbonInterfaceHandler = null;
+		_automation = null;
 		_commandRunner = null;
 		_inventorApplication = null;
 
@@ -145,14 +152,7 @@ public sealed class AddInServer : ApplicationAddInServer
 		_settings!.LastCommand = command;
 		_settings.Save();
 
-		CommandRunResult result = _commandRunner!.Run(command, _settings.WrapInTransaction);
-		ManagerLog.Write(string.Create(
-			CultureInfo.InvariantCulture,
-			$"Run: {command.TypeName} from '{command.AssemblyPath}', succeeded {result.Succeeded}, {result.Elapsed.TotalMilliseconds:F0} ms, unloaded {result.IsUnloaded}"));
-		if (result.ErrorText is not null)
-		{
-			ManagerLog.Write($"Run error: {result.ErrorText}");
-		}
+		CommandRunResult result = RunAndLog(command, _settings.WrapInTransaction);
 
 		if (ResultWindow.IsWorthShowing(result) is false)
 		{
@@ -162,6 +162,23 @@ public sealed class AddInServer : ApplicationAddInServer
 		ResultWindow window = ResultWindow.Create(result);
 		_ = new WindowInteropHelper(window) { Owner = new IntPtr(_inventorApplication!.MainFrameHWND) };
 		_ = window.ShowDialog();
+	}
+
+	/// <summary>
+	/// 	Runs a command and writes the result to the manager's log. The ribbon buttons and <see cref="ManagerAutomation" /> share it.
+	/// </summary>
+	private CommandRunResult RunAndLog(CommandReference command, bool wrapInTransaction)
+	{
+		CommandRunResult result = _commandRunner!.Run(command, wrapInTransaction);
+		ManagerLog.Write(string.Create(
+			CultureInfo.InvariantCulture,
+			$"Run: {command.TypeName} from '{command.AssemblyPath}', succeeded {result.Succeeded}, {result.Elapsed.TotalMilliseconds:F0} ms, unloaded {result.IsUnloaded}"));
+		if (result.ErrorText is not null)
+		{
+			ManagerLog.Write($"Run error: {result.ErrorText}");
+		}
+
+		return result;
 	}
 
 	private void OnResetRibbonInterface(NameValueMap context)

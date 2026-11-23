@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!--
+		Commands for the tests, built the same way as a user's command library.
+		The tests load this build output through the manager, so no test project references its assembly.
+	-->
+	<PropertyGroup>
+		<TargetFramework>$(AddInTargetFramework)</TargetFramework>
+		<RootNamespace>InventorAddinManager.Tests.Commands</RootNamespace>
+		<AssemblyName>InventorAddinManager.Tests.Commands</AssemblyName>
+		<IsPackable>false</IsPackable>
+		<EnableDynamicLoading>true</EnableDynamicLoading>
+	</PropertyGroup>
+
+	<!-- NewtonsoftVersionCommand shows that this copy loads, also when the default context has 13.0.3. -->
+	<ItemGroup>
+		<PackageReference Include="Newtonsoft.Json" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="Autodesk.Inventor.Interop">
+			<HintPath>$(InventorInteropPath)</HintPath>
+			<EmbedInteropTypes>false</EmbedInteropTypes>
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+</Project>
