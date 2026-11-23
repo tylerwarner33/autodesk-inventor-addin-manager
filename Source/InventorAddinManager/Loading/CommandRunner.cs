@@ -11,7 +11,10 @@ namespace InventorAddinManager.Loading;
 /// <param name="inventorApplication">
 /// 	The running Inventor session.
 /// </param>
-internal sealed class CommandRunner(Inventor.Application inventorApplication)
+/// <param name="shadowRoot">
+/// 	The folder for the shadow copies, or <see langword="null" /> for <see cref="ShadowCopy.DefaultRoot" />.
+/// </param>
+internal sealed class CommandRunner(Inventor.Application inventorApplication, string? shadowRoot = null)
 {
 	/// <summary>
 	/// 	The number of garbage collections to try before the manager reports that a build stays loaded.
@@ -57,7 +60,7 @@ internal sealed class CommandRunner(Inventor.Application inventorApplication)
 			return (null, $"'{command.AssemblyPath}' does not exist. Build the project first.", new WeakReference(null));
 		}
 
-		string shadowAssemblyPath = ShadowCopy.Create(command.AssemblyPath);
+		string shadowAssemblyPath = ShadowCopy.Create(command.AssemblyPath, shadowRoot);
 		CommandLoadContext context = new(shadowAssemblyPath);
 		WeakReference contextReference = new(context, trackResurrection: true);
 		Inventor.Transaction? transaction = null;

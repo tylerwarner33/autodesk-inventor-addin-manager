@@ -14,17 +14,20 @@ internal static class CommandCatalog
 	/// <param name="assemblyPath">
 	/// 	Path of the assembly in the build output.
 	/// </param>
+	/// <param name="shadowRoot">
+	/// 	The folder for the shadow copies, or <see langword="null" /> for <see cref="ShadowCopy.DefaultRoot" />.
+	/// </param>
 	/// <returns>
 	/// 	The commands, sorted by type name.
 	/// </returns>
-	public static IReadOnlyList<CommandReference> Discover(string assemblyPath)
+	public static IReadOnlyList<CommandReference> Discover(string assemblyPath, string? shadowRoot = null)
 	{
 		if (File.Exists(assemblyPath) is false)
 		{
 			throw new FileNotFoundException($"'{assemblyPath}' does not exist. Build the project first.", assemblyPath);
 		}
 
-		string shadowAssemblyPath = ShadowCopy.Create(assemblyPath);
+		string shadowAssemblyPath = ShadowCopy.Create(assemblyPath, shadowRoot);
 		CommandLoadContext context = new(shadowAssemblyPath);
 		try
 		{
