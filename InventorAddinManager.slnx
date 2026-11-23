@@ -1,12 +1,45 @@
 <Solution>
+  <!--
+    The configuration names the build type and the Inventor release. See Directory.Build.props.
+    Directory.Solution.props makes Debug.2027 the default of a solution build.
+  -->
+  <Configurations>
+    <BuildType Name="Debug.2025" />
+    <BuildType Name="Debug.2026" />
+    <BuildType Name="Debug.2027" />
+    <BuildType Name="Release.2025" />
+    <BuildType Name="Release.2026" />
+    <BuildType Name="Release.2027" />
+  </Configurations>
   <Folder Name="/Samples/">
     <Project Path="Samples/SampleCommands/SampleCommands.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path="AGENTS.md" />
     <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="Directory.Solution.props" />
+    <File Path="global.json" />
+    <File Path="nuget.config" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/Solution Items/.github/">
+    <File Path=".github/dependabot.yml" />
+  </Folder>
+  <Folder Name="/Solution Items/.github/workflows/">
+    <File Path=".github/workflows/build.yml" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/InventorAddinManager.InventorTests/InventorAddinManager.InventorTests.csproj" />
+    <Project Path="Tests/InventorAddinManager.Tests.Commands/InventorAddinManager.Tests.Commands.csproj" />
+    <Project Path="Tests/InventorAddinManager.Tests/InventorAddinManager.Tests.csproj" />
+  </Folder>
   <Project Path="Source/InventorAddinManager/InventorAddinManager.csproj" />
-  <Project Path="Source/InventorAddinManager.Loader/InventorAddinManager.Loader.csproj" />
+  <!-- Inventor 2027 isolates the manager itself, so the loader is not built for it. -->
+  <Project Path="Source/InventorAddinManager.Loader/InventorAddinManager.Loader.csproj">
+    <Build Solution="Debug.2027|*" Project="false" />
+    <Build Solution="Release.2027|*" Project="false" />
+  </Project>
 </Solution>

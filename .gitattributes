@@ -1,0 +1,9 @@
+# LF in the repository and in every checkout, whatever core.autocrlf is on the machine.
+# .editorconfig asks for LF too, so the editor and git agree.
+* text=auto eol=lf
+
+*.dll   binary
+*.pdb   binary
+*.exe   binary
+*.png   binary
+*.ico   binary
