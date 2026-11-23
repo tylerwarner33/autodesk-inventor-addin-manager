@@ -44,22 +44,47 @@ while Inventor's own `stdole.dll` stays in the default context.
 
 ## Requirements
 
-- Inventor 2025, 2026, or 2027.
+- Inventor 2025, 2026, or 2027 to run the manager.
   Inventor 2024 and earlier run on .NET Framework, which has no collectible `AssemblyLoadContext`.
-- .NET SDK 10 (it also builds the .NET 8 targets for 2025 and 2026).
+- .NET SDK 10 (`global.json`). It also builds the .NET 8 targets for 2025 and 2026.
+  The unit tests for 2025 and 2026 need the .NET 8 runtime.
 
-| Release | `AutodeskVersion` | Target framework | Manifest version |
+The build does not need Inventor.
+`Libs\Inventor\<year>\` holds the interop for each release, so a machine with no Inventor (ex. a CI runner) can build and run the unit tests.
+Each copy is the oldest point release of that year that we have.
+A build against a newer point release does not bind to the older interop that an Inventor with no update loads.
+
+## Build
+
+The configuration names the build type and the Inventor release.
+Select it in the IDE, or give it with `-c`:
+
+| Configuration | Release | Target framework | Manifest version |
 |---|---|---|---|
-| Inventor 2025 | `2025` | `net8.0-windows` | 29 |
-| Inventor 2026 | `2026` | `net8.0-windows` | 30 |
-| Inventor 2027 | `2027` (default) | `net10.0-windows` | 31 |
+| `Debug.2025`, `Release.2025` | Inventor 2025 | `net8.0-windows` | 29 |
+| `Debug.2026`, `Release.2026` | Inventor 2026 | `net8.0-windows` | 30 |
+| `Debug.2027` (default), `Release.2027` | Inventor 2027 | `net10.0-windows` | 31 |
+
+```powershell
+dotnet build InventorAddinManager.slnx -c Release.2025
+```
+
+The name holds the year, not the Autodesk release number. Inventor 2027 is R31, so "R27" would mean Inventor 2023.
+Each configuration builds into its own folders, ex. `bin\Release.2025\` and `obj\Release.2025\`, so two releases can build at the same time.
+The build defines `INVENTOR2027` and `INVENTOR2025_OR_GREATER` through `INVENTOR2027_OR_GREATER`, so code can use an API of a newer release:
+
+```csharp
+#if INVENTOR2026_OR_GREATER
+	// An API that Inventor 2026 added.
+#endif
+```
 
 ## Install the manager
 
 Close Inventor, then build with deployment on, one time for each release:
 
 ```powershell
-dotnet build Source\InventorAddinManager -p:AutodeskVersion=2027 -p:DeployAddIn=true
+dotnet build Source\InventorAddinManager -c Debug.2027 -p:DeployAddIn=true
 ```
 
 This writes `%APPDATA%\Autodesk\Inventor 2027\Addins\InventorAddinManager.addin`.
@@ -67,7 +92,7 @@ The manifest points at the build output in this repository.
 For 2025 and 2026, the build also builds the loader, and the manifest points at the loader:
 
 ```
-Source\InventorAddinManager\bin\Debug\2025\
+Source\InventorAddinManager\bin\Debug.2025\
   ├── InventorAddinManager.Loader.dll   the manifest's assembly, in the default context
   └── App\                              the manager's full build output, in its own context
 ```
@@ -81,9 +106,13 @@ Until you approve it, the prompt stops Inventor from loading the other add-ins.
 
 To remove the manager, delete the `.addin` file, or run the same command with `-t:Clean`.
 
+To debug the manager, set `Source\InventorAddinManager` as the startup project and press F5. It starts Inventor of the selected configuration.
+
 ## Write a command
 
-Your project is an ordinary class library. It needs no reference to the manager and no `.addin` manifest.
+The manager runs a command from any .NET assembly: an add-in that you develop, or a class library.
+The assembly needs no reference to the manager.
+For an add-in, add a command class beside your add-in code. The manager calls only that class, not your `ApplicationAddInServer`.
 
 A command is a public class with a public method named `Execute`:
 
@@ -105,7 +134,7 @@ public sealed class ActiveDocumentReport
 | Return value | Optional. The manager shows the text of a value that is not `null`. A command that returns nothing and succeeds shows nothing. |
 | Exception | The manager shows it with its stack trace, in a window that lets you copy it. |
 
-Set these in the project file of the command:
+Set these in the project file:
 
 ```xml
 <PropertyGroup>
@@ -131,7 +160,7 @@ Set these in the project file of the command:
 ## The development loop
 
 1. Start Inventor. Click **Tools > Add-In Manager**.
-2. Click **Add...** and select your assembly in the build output, ex. `bin\Debug\2027\MyAddin.dll`.
+2. Click **Add...** and select your assembly in the build output, ex. `bin\Debug.2027\MyAddin.dll`.
 3. Select a command and click **Run**. The window closes, then the command runs.
 4. Change the code and build. Inventor stays open.
 5. Click **Run Last**. The new build runs.
@@ -149,6 +178,39 @@ It keeps the files for 7 days.
 
 To start a button from code, ex. an iLogic rule or a test, use `ControlDefinition.Execute2(true)`.
 `Execute()` only queues the command. A queued command that has not started blocks every later start of the same command.
+
+## Run a command from code
+
+`ApplicationAddIn.Automation` of the manager gives an object that runs a command with no window.
+A script, an iLogic rule, or a test in another process uses it through late binding:
+
+```csharp
+Inventor.ApplicationAddIn manager = inventorApplication.ApplicationAddIns.ItemById["{4421BA74-4DBD-4925-9521-35C05DD70634}"];
+dynamic automation = manager.Automation;
+
+dynamic result = automation.Run(@"C:\Source\MyCommands\bin\Debug.2027\MyCommands.dll", "MyCommands.ActiveDocumentName", false);
+// result.Succeeded, result.ReturnText, result.ErrorText, result.ElapsedMilliseconds, result.IsUnloaded
+
+object[] commands = automation.ListCommands(@"C:\Source\MyCommands\bin\Debug.2027\MyCommands.dll");
+```
+
+A run through `Automation` writes to the log, but does not show the result window and does not change **Run Last**.
+
+## Tests
+
+| Project | Needs | Tests |
+|---|---|---|
+| `Tests\InventorAddinManager.Tests` | Nothing | The command convention, the shadow copy, and each loading claim in this README. It loads `Tests\InventorAddinManager.Tests.Commands` through the manager. |
+| `Tests\InventorAddinManager.InventorTests` | Inventor of the same release, with the manager deployed | The same claims in a live session, through `Automation`. Each test skips when no such Inventor runs. |
+
+```powershell
+dotnet test --project Tests\InventorAddinManager.Tests -c Debug.2025
+
+# Deploy the manager for 2026 and start Inventor 2026 first.
+dotnet test --project Tests\InventorAddinManager.InventorTests -c Debug.2026
+```
+
+The `Build` workflow builds each release and runs the unit tests.
 
 ## Differences from a deployed add-in
 
