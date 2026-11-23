@@ -1,0 +1,49 @@
+# Builds the solution and runs the unit tests for each Inventor release.
+# The interop is vendored under Libs, so the runner needs no Inventor.
+# The tests in InventorAddinManager.InventorTests need a running Inventor, so this workflow leaves them out.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Inventor ${{ matrix.release }}
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        release: [2025, 2026, 2027]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # .NET 8 runs the tests for 2025 and 2026. global.json selects the SDK 10 that builds every release.
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Build
+        run: dotnet build InventorAddinManager.slnx -c Release.${{ matrix.release }}
+
+      # Only the unit tests. With no Inventor, every test in InventorAddinManager.InventorTests skips.
+      - name: Unit tests
+        run: dotnet test --project Tests/InventorAddinManager.Tests -c Release.${{ matrix.release }} --no-build

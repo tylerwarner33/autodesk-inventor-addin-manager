@@ -1,0 +1,29 @@
+# One pull request each week for each ecosystem, so the updates are few and easy to review.
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      nuget:
+        patterns: ["*"]
+    ignore:
+      # The samples and the tests need 13.0.4 against the 13.0.3 that Inventor ships, to show which copy loads.
+      # Change it only with PackageVersionReport, NewtonsoftVersionCommand, and their tests.
+      - dependency-name: Newtonsoft.Json
+      # Version 17 forwards the stdole types to Microsoft.VisualStudio.Interop.dll. A new major version needs a test in
+      # a live session of each release. See the README, "How it works".
+      - dependency-name: stdole
+        update-types: ["version-update:semver-major"]
+
+  # The actions are pinned to a commit, not to a tag, because a tag can move to other code.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
